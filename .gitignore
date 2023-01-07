@@ -1,0 +1,5 @@
+metastore_db/*
+.idea/*
+src/cpe_devices
+src/data_processing
+src/preprocessor
