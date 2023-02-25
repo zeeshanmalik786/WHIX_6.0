@@ -1,7 +1,6 @@
 metastore_db/*
 .idea/*
 src/cpe_devices
-src/data_processing
 src/preprocessor
 src/unified_processing/__pycache__/unified_processing.cpython-37.pyc
 src/unified_processing/__pycache__/__init__.cpython-37.pyc
