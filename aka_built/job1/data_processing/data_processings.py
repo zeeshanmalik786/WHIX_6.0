@@ -1,5 +1,5 @@
-from src.preprocessor.preprocess  import preprocessor
-from src.config.config import config
+from data_processing.preprocess  import preprocessor
+from data_processing.config import config
 from pyspark.sql import functions as func
 from pyspark.sql.types import ArrayType, DoubleType, IntegerType, StringType
 from pyspark.sql.functions import *
@@ -277,8 +277,6 @@ class data_process:
                    "deviceSourceId",
                    "combined_pods_5G",
                    "received_hour")
-        # self.spark.sql("DROP TABLE IF EXISTS default.iptv_whix_raw_staging_tmp")
-
 
         connected_devices_pods = self.obj.join_two_frames(connected_devices_pods_5G,connected_devices_pods_2G,"left",["accountSourceId",
                                                                                                                       "deviceSourceId",
@@ -587,16 +585,16 @@ class data_process:
                                                                              "received_hour"]). \
             withColumn("received_hour", func.col("received_hour") - func.expr("INTERVAL 4 HOURS")).\
             select("accountSourceId",
-                                 "deviceSourceId",
-                                 "AccountId",
-                                 "GW_MODEL",
-                                 "make",
-                                 "postalCode",
-                                 "model",
-                                 "2GclientMac_split",
-                                 "5GclientMac_split",
-                                 "6GclientMac_split",
-                                 "2GRSSI_split",
+                   "deviceSourceId",
+                   "AccountId",
+                   "GW_MODEL",
+                    "make",
+                    "postalCode",
+                    "model",
+                    "2GclientMac_split",
+                    "5GclientMac_split",
+                    "6GclientMac_split",
+                    "2GRSSI_split",
                                  "5GRSSI_split",
                                  "6GRSSI_split",
                                  "WIFI_CW_1_split",
@@ -656,7 +654,6 @@ class data_process:
                                  "Total_Clients",
                                  "received_hour").write.saveAsTable("default.iptv_whix_raw_staging_one")
 
+        self.spark.sql("INSERT INTO default.iptv_whix_raw_staging_one_historical SELECT * from default.iptv_whix_raw_staging_one")
+
         return True
-
-
-
