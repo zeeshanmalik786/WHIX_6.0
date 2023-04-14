@@ -4,6 +4,7 @@ from cpe_devices.cpe_devices import device_names
 from behind_pods.behind_pods import behind_pods
 from datetime import datetime, timedelta
 from pytz import timezone
+from normalization.normalization import normalization
 
 
 def main(run_date, hour):
@@ -29,10 +30,19 @@ def main(run_date, hour):
     #     print("Job 2 Done")
     # else:
     #     print("Job 2 Crashed")
+    #
+    # job3 = behind_pods()
 
-    job3 = behind_pods()
+    # status = job3.__behind_pods__(run_date)
+    #
+    # if status is True:
+    #     print("Job 3 Done")
+    # else:
+    #     print("Job 3 Crashed")
 
-    status = job3.__behind_pods__(run_date)
+    job4 = normalization()
+
+    status = job4.__normalize__(run_date, hour)
 
     if status is True:
         print("Job 3 Done")
@@ -53,7 +63,7 @@ if __name__ == '__main__':
         hour = 0
     print(run_date)
     # Manually Debugging the Code
-    run_date='2023-02-23'
+    run_date='2023-03-01'
     main(run_date, 10)
 
 
