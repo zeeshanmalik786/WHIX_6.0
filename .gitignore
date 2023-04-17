@@ -8,3 +8,7 @@ src/config/__pycache__/config.cpython-37.pyc
 src/config/__pycache__/__init__.cpython-37.pyc
 src/data_processing/__pycache__
 src/behind_pods/
+aka_built/job1/data_processing/
+aka_built/job2/unified_processing/
+aka_built/job3/cpe_devices/
+aka_built/job4/scoring/

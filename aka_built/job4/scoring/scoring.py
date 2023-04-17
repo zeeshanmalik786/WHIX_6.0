@@ -1,5 +1,5 @@
-from src.preprocessor.preprocess  import preprocessor
-from src.config.config import config
+from scoring.preprocess  import preprocessor
+from scoring.config import config
 from pyspark.sql import functions as func
 from pyspark.sql.types import ArrayType, DoubleType, IntegerType, StringType
 from datetime import datetime
@@ -8,7 +8,7 @@ from pytz import timezone
 from datetime import datetime, timedelta
 
 
-class normalization:
+class scoring:
 
     def __init__(self):
 
@@ -19,7 +19,7 @@ class normalization:
 
         # Usage Threshold
 
-        self.usage_threshold=60
+        self.usage_threshold=0.60
         # Parameterization of RSSI
 
         self.xb6aminrssi_lower_twog=-77
@@ -196,46 +196,46 @@ class normalization:
         self.tx_coeff=0.10
         self.util_coeff=0.10
 
-        self.higher_modulation_higher_usage_devices_weight=0.30
-        self.higher_modulation_lower_usage_devices_weight=0.30
-        self.lower_modulation_higher_usage_devices_weight=0.20
-        self.lower_modulation_lower_usage_devices_weight=0.20
+        self.higher_modulation_higher_usage_devices_weight=0.40
+        self.higher_modulation_lower_usage_devices_weight=0.25
+        self.lower_modulation_higher_usage_devices_weight=0.30
+        self.lower_modulation_lower_usage_devices_weight=0.10
 
-    def __normalize__(self, run_date, hour):
+    def __score__(self, run_date, hour):
 
         end_date= datetime.strptime(str(run_date) + "T" + str(hour) + ":00:00.000+0000","%Y-%m-%dT%H:%M:%S.%f%z")
-        start_date= end_date - timedelta(hours=48)
+        start_date= end_date - timedelta(hours=24)
 
-        self.spark.sql("DROP TABLE IF EXISTS default.ch_whix_raw")
+        self.spark.sql("DROP TABLE IF EXISTS default.ch_whix_staging_raw")
 
         wifi_happiness_index=self.obj.get_data("default.iptv_whix_raw_staging_two_historical", ["accountSourceId",
-                                                                           "deviceSourceId",
-                                                                           "AccountId",
-                                                                           "GW_MODEL",
-                                                                           "make",
-                                                                           "postalCode",
-                                                                           "model",
-                                                                           "clientMac",
-                                                                           "received_hour",
-                                                                           "rssi",
-                                                                           "channel_width",
-                                                                           "noise",
-                                                                           "packets_sent",
-                                                                           "snr",
-                                                                           "maxtx",
-                                                                           "maxrx",
-                                                                           "tx",
-                                                                           "rx",
-                                                                           "retransmissions",
-                                                                           "channel_utilization",
-                                                                           "tag",
-                                                                           "reboot",
-                                                                           "total_clients",
-                                                                           "client_type",
-                                                                           "deviceType",
-                                                                           "deviceModel",
-                                                                           "streamingDevice",
-                                                                           "brand"]).\
+                                                                                                "deviceSourceId",
+                                                                                                "AccountId",
+                                                                                                "GW_MODEL",
+                                                                                                "make",
+                                                                                                "postalCode",
+                                                                                                "model",
+                                                                                                "clientMac",
+                                                                                                "received_hour",
+                                                                                                "rssi",
+                                                                                                "channel_width",
+                                                                                                "noise",
+                                                                                                "packets_sent",
+                                                                                                "snr",
+                                                                                                "maxtx",
+                                                                                                "maxrx",
+                                                                                                "tx",
+                                                                                                "rx",
+                                                                                                "retransmissions",
+                                                                                                "channel_utilization",
+                                                                                                "tag",
+                                                                                                "reboot",
+                                                                                                "total_clients",
+                                                                                                "client_type",
+                                                                                                "deviceType",
+                                                                                                "deviceModel",
+                                                                                                "streamingDevice",
+                                                                                                "brand"]).\
             filter((col("received_hour")<= lit(end_date)) & (col("received_hour")>=lit(start_date))).\
             groupBy("accountSourceId",
                     "deviceSourceId",
@@ -482,6 +482,12 @@ class normalization:
                           withColumn("norm_util",func.when((col("norm_util")<=0),0).otherwise(func.when((col("norm_util") >=1) | (col("norm_util").isNull()) ,1).otherwise(col("norm_util")))).\
                           withColumn("norm_reboot", func.round(1-((col("sum_reboot") - self.minreboot)/(self.maxreboot - self.minreboot)),2)).\
                           withColumn("norm_reboot", func.when((col("norm_reboot")<=0) | (col("norm_reboot").isNull()),0).otherwise(func.when(col("norm_reboot") >=1,1).otherwise(col("norm_reboot")))).\
+                          withColumn("norm_rssi", func.when(col("norm_rssi").isNotNull(),col("norm_rssi")).otherwise(0)).\
+                          withColumn("norm_snr", func.when(col("norm_snr").isNotNull(), col("norm_snr")).otherwise(0)).\
+                          withColumn("norm_rx", func.when(col("norm_rx").isNotNull(), col("norm_rx")).otherwise(0)).\
+                          withColumn("norm_tx", func.when(col("norm_tx").isNotNull(), col("norm_tx")).otherwise(0)).\
+                          withColumn("norm_util", func.when(col("norm_util").isNotNull(),col("norm_util")).otherwise(0)).\
+                          withColumn("norm_reboot", func.when(col("norm_reboot").isNotNull(),col("norm_reboot")).otherwise(0)).\
                           withColumn("WIFI_HAPPINESS_INDEX", func.round(100 * ((col("norm_rssi") * self.rssi_coeff) +
                                                                         (col("norm_snr")  * self.snr_coeff)  +
                                                                         (col("norm_rx") * self.rx_coeff) +
@@ -500,18 +506,18 @@ class normalization:
                                                                                      "AccountId",
                                                                                      "GW_MODEL"]).\
             withColumn("packets_perc", func.round((col("sum_usage")/col("highest_usage")),2)).\
-            withColumn("higher_modulation_higher_usage_devices", func.when((col("packets_perc") > self.usage_threshold) & (col("med_maxtx") > 444), lit("1")).otherwise(0)).\
-            withColumn("lower_modulation_lower_usage_devices",  func.when((col("packets_perc") <= self.usage_threshold) & (col("med_maxtx") <= 444)  , lit("1")).otherwise(0)). \
-            withColumn("higher_modulation_lower_usage_devices",  func.when((col("packets_perc") <= self.usage_threshold) & (col("med_maxtx") > 444) , lit("1")).otherwise(0)). \
-            withColumn("lower_modulation_higher_usage_devices", func.when((col("packets_perc") > self.usage_threshold) & (col("med_maxtx") <= 444) , lit("1")).otherwise(0))
+            withColumn("higher_modulation_higher_usage_devices", func.when((col("packets_perc") >= self.usage_threshold) & (col("med_maxtx") > 444), lit("1")).otherwise(0)).\
+            withColumn("lower_modulation_lower_usage_devices",  func.when((col("packets_perc") < self.usage_threshold) & (col("med_maxtx") <= 444)  , lit("1")).otherwise(0)).\
+            withColumn("higher_modulation_lower_usage_devices",  func.when((col("packets_perc") < self.usage_threshold) & (col("med_maxtx") > 444) , lit("1")).otherwise(0)).\
+            withColumn("lower_modulation_higher_usage_devices", func.when((col("packets_perc") >= self.usage_threshold) & (col("med_maxtx") <= 444) , lit("1")).otherwise(0))
 
         count_of_type_devices = combined_wifi_packets.groupBy("accountSourceId",
-                                                                 "deviceSourceId",
-                                                                 "AccountId",
-                                                                 "GW_MODEL",
-                                                                 "make",
-                                                                 "postalCode",
-                                                                 "model").\
+                                                              "deviceSourceId",
+                                                              "AccountId",
+                                                              "GW_MODEL",
+                                                              "make",
+                                                              "postalCode",
+                                                              "model").\
                                     agg(func.sum("higher_modulation_higher_usage_devices").alias("higher_modulation_higher_usage_devices_count"),
                                         func.sum("lower_modulation_lower_usage_devices").alias("lower_modulation_lower_usage_devices_count"),
                                         func.sum("higher_modulation_lower_usage_devices").alias("higher_modulation_lower_usage_devices_count"),
@@ -520,10 +526,10 @@ class normalization:
             withColumn("higher_modulation_lower_usage_devices_count",func.when(col("higher_modulation_lower_usage_devices_count").isNotNull(), col("higher_modulation_lower_usage_devices_count")).otherwise(0)). \
             withColumn("lower_modulation_higher_usage_devices_count",func.when(col("lower_modulation_higher_usage_devices_count").isNotNull(),col("lower_modulation_higher_usage_devices_count")).otherwise(0)). \
             withColumn("lower_modulation_lower_usage_devices_count",func.when(col("lower_modulation_lower_usage_devices_count").isNotNull(),col("lower_modulation_lower_usage_devices_count")).otherwise(0)). \
-            withColumn("hmhu_flag", func.when(col("higher_modulation_higher_usage_devices_count")==0,0).otherwise(1)).\
-            withColumn("hmlu_flag", func.when(col("higher_modulation_lower_usage_devices_count")==0,0).otherwise(1)) .\
-            withColumn("lmhu_flag", func.when(col("lower_modulation_higher_usage_devices_count")==0,0).otherwise(1)).\
-            withColumn("lmlu_flag", func.when(col("lower_modulation_lower_usage_devices_count")==0,0).otherwise(1)).\
+            withColumn("hmhu_flag", func.when(col("higher_modulation_higher_usage_devices_count")==0, 0).otherwise(1)).\
+            withColumn("hmlu_flag", func.when(col("higher_modulation_lower_usage_devices_count")==0, 0).otherwise(1)) .\
+            withColumn("lmhu_flag", func.when(col("lower_modulation_higher_usage_devices_count")==0, 0).otherwise(1)).\
+            withColumn("lmlu_flag", func.when(col("lower_modulation_lower_usage_devices_count")==0, 0).otherwise(1)).\
             withColumn("distributor", func.when(col("higher_modulation_higher_usage_devices_count")==0,lit(self.higher_modulation_higher_usage_devices_weight)).otherwise(0)).\
             withColumn("distributor", func.when(col("lower_modulation_lower_usage_devices_count")==0, col("distributor") + lit(self.lower_modulation_lower_usage_devices_weight)).otherwise(col("distributor"))).\
             withColumn("distributor", func.when(col("higher_modulation_lower_usage_devices_count")==0, col("distributor") + lit(self.higher_modulation_lower_usage_devices_weight)).otherwise(col("distributor"))).\
@@ -541,7 +547,6 @@ class normalization:
                                         (col("higher_modulation_lower_usage_devices_count") * col("higher_modulation_lower_usage_weight")) +
                                         (col("lower_modulation_higher_usage_devices_count") * col("lower_modulation_higher_usage_weight")) +
                                         (col("lower_modulation_lower_usage_devices_count") * col("lower_modulation_lower_usage_weight")))
-
 
         household_whix_pre = self.obj.join_two_frames(combined_wifi_packets,count_of_type_devices,"inner",["accountSourceId",
                                                                                                            "deviceSourceId",
@@ -598,15 +603,47 @@ class normalization:
                     "make",
                     "postalCode").\
             agg(func.sum(col("dot_product")).alias("HOUSEHOLD_WHIX")).\
-            withColumn("HOUSEHOLD_WHIX", func.round(100 - (func.col("HOUSEHOLD_WHIX") * 100),2))
+            withColumn("HOUSEHOLD_WHIX", func.round((func.col("HOUSEHOLD_WHIX") * 100),2))
 
-        household_whix = self.obj.join_three_frames(combined_wifi_packets,household_whix_pre, count_of_type_devices,"inner",["accountSourceId",
-                                                                                                    "deviceSourceId",
-                                                                                                    "AccountId",
-                                                                                                    "GW_MODEL",
-                                                                                                    "make",
-                                                                                                    "postalCode"]).drop("model").\
-            withColumn("HOUSEHOLD_WHIX", func.when(func.col("HOUSEHOLD_WHIX")>100,100).otherwise(func.when(col("HOUSEHOLD_WHIX")<100,0).otherwise(col("HOUSEHOLD_WHIX")))).write.\
-            saveAsTable("default.ch_whix_raw")
+        self.obj.join_three_frames(combined_wifi_packets, household_whix_pre, count_of_type_devices, "inner", ["accountSourceId",
+                                                                                                               "deviceSourceId",
+                                                                                                               "AccountId",
+                                                                                                               "GW_MODEL",
+                                                                                                               "make",
+                                                                                                               "postalCode"]).drop("model"). \
+        withColumn("HOUSEHOLD_WHIX", func.when(func.col("HOUSEHOLD_WHIX")>=100,100).\
+                   otherwise(func.when(col("HOUSEHOLD_WHIX")<0,0).otherwise(col("HOUSEHOLD_WHIX")))).\
+        select("accountSourceId",
+                   "deviceSourceId",
+                   "AccountId",
+                   "GW_MODEL",
+                   "make",
+                   "postalCode",
+                   "clientMac",
+                   col("med_rssi").alias("rssi"),
+                   col("channel_width").alias("channel_width"),
+                   col("noise").alias("noise"),
+                   col("sum_usage").alias("usage"),
+                   col("med_snr").alias("snr"),
+                   col("med_maxtx").alias("maxtx"),
+                   col("med_tx").alias("tx"),
+                   col("med_maxrx").alias("maxrx"),
+                   col("sum_retransmissions").alias("retransmissions"),
+                   "channel_utilization",
+                   "tag",
+                   col("sum_reboot").alias("reboot"),
+                   "total_clients",
+                   "client_type",
+                   "deviceType",
+                   "deviceModel",
+                   "streamingDevice",
+                   "brand",
+                   "WIFI_HAPPINESS_INDEX",
+                   "HOUSEHOLD_WHIX",
+                   "received_hour").write. \
+            saveAsTable("default.ch_whix_staging_raw")
+
+        self.spark.sql(
+            "INSERT INTO default.ch_whix_raw SELECT * from default.ch_whix_staging_raw")
 
         return True

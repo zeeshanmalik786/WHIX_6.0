@@ -1,0 +1,10 @@
+setup.py
+score.egg-info/PKG-INFO
+score.egg-info/SOURCES.txt
+score.egg-info/dependency_links.txt
+score.egg-info/top_level.txt
+scoring/__init__.py
+scoring/config.py
+scoring/preprocess.py
+scoring/scoring.py
+scoring/scoring_entry.py

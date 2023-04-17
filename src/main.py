@@ -4,7 +4,7 @@ from cpe_devices.cpe_devices import device_names
 from behind_pods.behind_pods import behind_pods
 from datetime import datetime, timedelta
 from pytz import timezone
-from normalization.normalization import normalization
+from scoring.scoring import scoring
 
 
 def main(run_date, hour):
@@ -13,41 +13,33 @@ def main(run_date, hour):
 
     print("WHIX start time", run_date)
 
-    # job1 = data_process()
-    #
-    # status = job1.__whix_data_processing__(run_date, hour)
-    #
-    # if status is True:
-    #     print("Job 1 Done")
-    # else:
-    #     print("Job 1 Crashed")
-    #
-    # job2 = unified_process()
-    #
-    # status = job2.__whix_unified_processing__(run_date)
-    #
-    # if status is True:
-    #     print("Job 2 Done")
-    # else:
-    #     print("Job 2 Crashed")
-    #
-    # job3 = behind_pods()
+    job1 = data_process()
 
-    # status = job3.__behind_pods__(run_date)
-    #
-    # if status is True:
-    #     print("Job 3 Done")
-    # else:
-    #     print("Job 3 Crashed")
+    status = job1.__whix_data_processing__(run_date, hour)
 
-    job4 = normalization()
+    if status is True:
+        print("Job 1 Done")
+    else:
+        print("Job 1 Crashed")
 
-    status = job4.__normalize__(run_date, hour)
+    job2 = unified_process()
+
+    status = job2.__whix_unified_processing__(run_date)
+
+    if status is True:
+        print("Job 2 Done")
+    else:
+        print("Job 2 Crashed")
+
+    job3 = scoring()
+
+    status = job3.__score__(run_date, hour)
 
     if status is True:
         print("Job 3 Done")
     else:
         print("Job 3 Crashed")
+
 
 if __name__ == '__main__':
 
@@ -63,7 +55,7 @@ if __name__ == '__main__':
         hour = 0
     print(run_date)
     # Manually Debugging the Code
-    run_date='2023-03-01'
-    main(run_date, 10)
+
+    main(datetime.date(run_date), hour)
 
 
