@@ -460,6 +460,7 @@ class unified_process:
                                                                                                     "client_type")). \
             withColumn("clientMac", func.upper(col("clientMac")))
 
+
         cujo_devices = self.obj.get_data("default.rdkb_wifi_fact_device_table", ["mac",
                                                                                  "deviceType",
                                                                                  "deviceModel",

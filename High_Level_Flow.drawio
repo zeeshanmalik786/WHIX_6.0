@@ -1,0 +1,34 @@
+<mxfile host="app.diagrams.net" modified="2023-05-04T15:36:00.266Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36" etag="AQRw_EXHAX1V5ZK-eRWH" version="21.1.8" type="device">
+  <diagram name="Page-1" id="vrAmgizOE0DNoa7dZklr">
+    <mxGraphModel dx="794" dy="448" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="leFct6cRjH6ayvSk1WqI-1" value="&lt;b&gt;&lt;font style=&quot;font-size: 15px;&quot;&gt;WHIX Migration to Azure Cloud&lt;/font&gt;&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="230" y="90" width="320" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="leFct6cRjH6ayvSk1WqI-6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="leFct6cRjH6ayvSk1WqI-2" target="leFct6cRjH6ayvSk1WqI-4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="leFct6cRjH6ayvSk1WqI-2" value="WHiX Data Processing" style="whiteSpace=wrap;html=1;aspect=fixed;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="160" y="160" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="leFct6cRjH6ayvSk1WqI-7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="leFct6cRjH6ayvSk1WqI-3" target="leFct6cRjH6ayvSk1WqI-4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="leFct6cRjH6ayvSk1WqI-3" value="CUJO AI" style="whiteSpace=wrap;html=1;aspect=fixed;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="160" y="270" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="leFct6cRjH6ayvSk1WqI-8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="leFct6cRjH6ayvSk1WqI-4" target="leFct6cRjH6ayvSk1WqI-5" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="leFct6cRjH6ayvSk1WqI-4" value="Unification" style="whiteSpace=wrap;html=1;aspect=fixed;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="320" y="210" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="leFct6cRjH6ayvSk1WqI-5" value="WHiX Calculation" style="whiteSpace=wrap;html=1;aspect=fixed;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="480" y="210" width="80" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

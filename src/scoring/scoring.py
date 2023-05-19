@@ -99,6 +99,9 @@ class scoring:
         self.xb8tminrssi_high_sixg = -84
         self.xb8tmaxrssi_high_sixg = -30
 
+        self.podsminrssi = -100
+        self.podsmaxrssi = -1
+
         # Parameterization of SNR
 
         self.xb6aminsnr_lower_twog = 10
@@ -209,6 +212,7 @@ class scoring:
         print(end_date)
 
         self.spark.sql("DROP TABLE IF EXISTS default.ch_whix_staging_raw")
+        self.spark.sql("DROP TABLE IF EXISTS default.ch_whix_staging_debug")
 
         wifi_happiness_index=self.obj.get_data("default.iptv_whix_raw_staging_two_historical", ["accountSourceId",
                                                                                                 "deviceSourceId",
@@ -246,7 +250,8 @@ class scoring:
                     "make",
                     "postalCode",
                     "model",
-                    "clientMac").\
+                    "clientMac",
+                    "total_clients").\
             agg(func.percentile_approx(col("rssi"),0.5).alias("med_rssi"),
                 func.max(col("channel_width")).alias("channel_width"),
                 func.percentile_approx(col("noise"),0.5).alias("noise"),
@@ -257,10 +262,9 @@ class scoring:
                 func.percentile_approx(col("maxrx"),0.5).alias("med_maxrx"),
                 func.percentile_approx(col("rx"),0.5).alias("med_rx"),
                 func.sum(col("retransmissions")).alias("sum_retransmissions"),
-                func.first(col("channel_utilization")).alias("channel_utilization"),
+                func.percentile_approx(col("channel_utilization"),0.5).alias("channel_utilization"),
                 func.max(col("tag")).alias("tag"),
                 func.sum(col("reboot")).alias("sum_reboot"),
-                func.max(col("total_clients")).alias("total_clients"),
                 func.max(col("client_type")).alias("client_type"),
                 func.first(col("deviceType")).alias("deviceType"),
                 func.first(col("deviceModel")).alias("deviceModel"),
@@ -371,6 +375,7 @@ class scoring:
                            otherwise(func.when((col("GW_MODEL") == 'XB8-T') &(col("med_maxrx") > 444) &
                                             (col("tag") == "6G"), func.round((col("med_rssi") - self.xb8tminrssi_high_sixg) / (self.xb8tmaxrssi_high_sixg - self.xb8tminrssi_high_sixg), 2)).\
                                      otherwise(0))))))))))))))))))))))))))))))))))).\
+        withColumn("norm_rssi", func.when(col("client_type")=="pod", func.round(1 - ((col("med_rssi") - self.podsminrssi)/(self.podsmaxrssi - self.podsminrssi)),2)).otherwise(col("norm_rssi"))).\
         withColumn("norm_snr", func.when((col("GW_MODEL") == 'XB6-A') &
                                          (col("med_maxrx") <= 144) &
                                          (col("tag") == "2G"), func.round((col("med_snr") - self.xb6aminsnr_lower_twog) / (self.xb6amaxsnr_lower_twog - self.xb6aminsnr_lower_twog), 2)). \
@@ -478,32 +483,49 @@ class scoring:
                           withColumn("norm_tx", func.round((col("med_rx")/col("med_maxrx")),2)).\
                           withColumn("ret_perc", func.when(round(1-(col("sum_retransmissions")/col("sum_usage")),2) > 1,1).\
                                      otherwise(func.when(func.round(1-(col("sum_retransmissions")/col("sum_usage")),2) < 0, 0).otherwise(func.round(1-(col("sum_retransmissions")/col("sum_usage")),2)))).\
-                          withColumn("norm_util", func.when(col("tag")=="2G",(func.round(1 - (col("channel_utilization").cast(IntegerType()) - self.minutil2G)/(self.maxutil2G - self.minutil2G),2))).\
-                                     otherwise(func.when(col("tag")=="5G",(func.round(1 - (col("channel_utilization").cast(IntegerType()) - self.minutil5G)/(self.maxutil5G - self.minutil5G),2))).\
-                                     otherwise(func.when(col("tag")=="6G",(func.round(1 - (col("channel_utilization").cast(IntegerType()) - self.minutil6G)/(self.maxutil6G - self.minutil6G),2)))))).\
-                          withColumn("norm_util",func.when((col("norm_util")<=0),0).otherwise(func.when((col("norm_util") >=1) | (col("norm_util").isNull()) ,1).otherwise(col("norm_util")))).\
                           withColumn("norm_reboot", func.round(1-((col("sum_reboot") - self.minreboot)/(self.maxreboot - self.minreboot)),2)).\
                           withColumn("norm_reboot", func.when((col("norm_reboot")<=0) | (col("norm_reboot").isNull()),0).otherwise(func.when(col("norm_reboot") >=1,1).otherwise(col("norm_reboot")))).\
                           withColumn("norm_rssi", func.when(col("norm_rssi").isNotNull(),col("norm_rssi")).otherwise(0)).\
                           withColumn("norm_snr", func.when(col("norm_snr").isNotNull(), col("norm_snr")).otherwise(0)).\
                           withColumn("norm_rx", func.when(col("norm_rx").isNotNull(), col("norm_rx")).otherwise(0)).\
                           withColumn("norm_tx", func.when(col("norm_tx").isNotNull(), col("norm_tx")).otherwise(0)).\
-                          withColumn("norm_util", func.when(col("norm_util").isNotNull(),col("norm_util")).otherwise(0)).\
-                          withColumn("norm_reboot", func.when(col("norm_reboot").isNotNull(),col("norm_reboot")).otherwise(0)).\
-                          withColumn("WIFI_HAPPINESS_INDEX", func.round(100 * ((col("norm_rssi") * self.rssi_coeff) +
+                          withColumn("norm_reboot", func.when(col("norm_reboot").isNotNull(),col("norm_reboot")).otherwise(0))
+
+
+        median_utilization = wifi_happiness_index.select("accountSourceId",
+                                                         "deviceSourceId",
+                                                         "AccountId",
+                                                         "channel_utilization",
+                                                         "tag",
+                                                         "received_hour").\
+                              groupBy("accountSourceId",
+                                      "deviceSourceId",
+                                      "AccountId",
+                                      "tag").\
+                              agg(func.percentile_approx(col("channel_utilization"), 0.5).alias("channel_utilization"))
+        combined_wifi_happiness_index = self.obj.join_two_frames(wifi_happiness_index.drop("channel_utilization"), median_utilization,"inner", ["accountSourceId",
+                                                                                                                    "deviceSourceId",
+                                                                                                                    "AccountId",
+                                                                                                                    "tag"]). \
+            withColumn("norm_util", func.when(col("tag") == "2G", (func.round(1 - (col("channel_utilization").cast(IntegerType()) - self.minutil2G) / (self.maxutil2G - self.minutil2G),2))). \
+            otherwise(func.when(col("tag") == "5G", (func.round(1 - (col("channel_utilization").cast(IntegerType()) - self.minutil5G) / (self.maxutil5G - self.minutil5G),2))). \
+            otherwise(func.when(col("tag") == "6G", (func.round(1 - (col("channel_utilization").cast(IntegerType()) - self.minutil6G) / (self.maxutil6G - self.minutil6G),2)))))). \
+            withColumn("norm_util", func.when((col("norm_util") <= 0), 0).otherwise(func.when((col("norm_util") >= 1) | (col("norm_util").isNull()), 1).otherwise(col("norm_util")))). \
+            withColumn("norm_util", func.when(col("norm_util").isNotNull(), col("norm_util")).otherwise(0)). \
+            withColumn("WIFI_HAPPINESS_INDEX", func.round(100 * ((col("norm_rssi") * self.rssi_coeff) +
                                                                         (col("norm_snr")  * self.snr_coeff)  +
                                                                         (col("norm_rx") * self.rx_coeff) +
                                                                         (col("norm_tx") * self.tx_coeff) +
                                                                         (col("norm_util") * self.util_coeff) +
                                                                         (col("norm_reboot") * self.reboot_coeff)),2)).\
-                          withColumn("WIFI_HAPPINESS_INDEX", func.when(col("client_type")=="pod", func.round(100 * (col("norm_rssi")*self.rssi_coeff))).otherwise(col("WIFI_HAPPINESS_INDEX")))
+                          withColumn("WIFI_HAPPINESS_INDEX", func.when(col("client_type")=="pod", func.round(100 * (col("norm_rssi")*1))).otherwise(col("WIFI_HAPPINESS_INDEX")))
 
         packets_percentage = wifi_happiness_index.groupBy("accountSourceId",
                                                           "deviceSourceId",
                                                           "AccountId",
                                                           "GW_MODEL").agg(func.sum("sum_usage").alias("highest_usage"))
 
-        combined_wifi_packets=self.obj.join_two_frames(wifi_happiness_index, packets_percentage, "inner", ["accountSourceId",
+        combined_wifi_packets=self.obj.join_two_frames(combined_wifi_happiness_index, packets_percentage, "inner", ["accountSourceId",
                                                                                      "deviceSourceId",
                                                                                      "AccountId",
                                                                                      "GW_MODEL"]).\
@@ -607,15 +629,18 @@ class scoring:
             agg(func.sum(col("dot_product")).alias("HOUSEHOLD_WHIX")).\
             withColumn("HOUSEHOLD_WHIX", func.round((func.col("HOUSEHOLD_WHIX") * 100),2))
 
-        self.obj.join_three_frames(combined_wifi_packets, household_whix_pre, count_of_type_devices, "inner", ["accountSourceId",
+        combined_all = self.obj.join_three_frames(combined_wifi_packets, household_whix_pre, count_of_type_devices, "inner", ["accountSourceId",
                                                                                                                "deviceSourceId",
                                                                                                                "AccountId",
                                                                                                                "GW_MODEL",
                                                                                                                "make",
-                                                                                                               "postalCode"]).drop("model"). \
-        withColumn("HOUSEHOLD_WHIX", func.when(func.col("HOUSEHOLD_WHIX")>=100,100).\
-                   otherwise(func.when(col("HOUSEHOLD_WHIX")<0,0).otherwise(col("HOUSEHOLD_WHIX")))).\
-        select("accountSourceId",
+                                                                                                               "postalCode"]).drop("model").\
+                withColumn("HOUSEHOLD_WHIX", func.when(func.col("HOUSEHOLD_WHIX") >= 100, 100). \
+                    otherwise(func.when(col("HOUSEHOLD_WHIX") < 0, 0).otherwise(col("HOUSEHOLD_WHIX"))))
+
+        combined_all.write.saveAsTable("default.ch_whix_staging_debug")
+
+        combined_all.select("accountSourceId",
                    "deviceSourceId",
                    "AccountId",
                    "GW_MODEL",

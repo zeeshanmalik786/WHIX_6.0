@@ -13,23 +13,23 @@ def main(run_date, hour):
 
     print("WHIX start time", run_date)
 
-    job1 = data_process()
-
-    status = job1.__whix_data_processing__(run_date, hour)
-
-    if status is True:
-        print("Job 1 Done")
-    else:
-        print("Job 1 Crashed")
-
-    job2 = unified_process()
-
-    status = job2.__whix_unified_processing__(run_date)
-
-    if status is True:
-        print("Job 2 Done")
-    else:
-        print("Job 2 Crashed")
+    # job1 = data_process()
+    #
+    # status = job1.__whix_data_processing__(run_date, hour)
+    #
+    # if status is True:
+    #     print("Job 1 Done")
+    # else:
+    #     print("Job 1 Crashed")
+    #
+    # job2 = unified_process()
+    #
+    # status = job2.__whix_unified_processing__(run_date)
+    #
+    # if status is True:
+    #     print("Job 2 Done")
+    # else:
+    #     print("Job 2 Crashed")
 
     job3 = scoring()
 
