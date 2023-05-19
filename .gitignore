@@ -10,10 +10,10 @@ src/config/__pycache__/__init__.cpython-37.pyc
 src/data_processing/__pycache__
 src/behind_pods/
 aka_built/job1/data_processing/config.py
-aka_built/job1/build/
-aka_built/job2/build/
-aka_built/job3/build/
-aka_built/job4/build/
+aka_built/job1/build/data_processing/
+aka_built/job2/build/unification/
+aka_built/job3/build/lib/cpe_devices/
+aka_built/job4/build/lib/scoring
 aka_built/job1/data_processing/preprocess.py
 aka_built/job2/unified_processing/
 aka_built/job2/unified_processing/config.py
